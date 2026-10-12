@@ -1,0 +1,14 @@
+{
+  "name": "foto-peserta",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Aplikasi web foto peserta dengan twibbon dan upload ke Nextcloud atau Google Drive",
+  "main": "server.js",
+  "scripts": { "start": "node server.js" },
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "googleapis": "^144.0.0",
+    "multer": "^1.4.5-lts.1"
+  }
+}

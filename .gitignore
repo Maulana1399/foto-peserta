@@ -1,0 +1,29 @@
+# Secrets
+.env
+
+# Dependencies
+node_modules/
+
+# Runtime data and uploaded files
+data/*
+
+# Backups
+*.bak
+*.backup
+*.original
+*.before-*
+
+# Git
+.git/
+
+# OS/editor
+.DS_Store
+Thumbs.db
+*.backup-*
+
+# Frontend backups
+public/*.bak
+public/*.bak-*
+public/*.backup
+public/*.backup-*
+public/*.before-*

@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#101827"><title>Foto Peserta</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header class="topbar"><div class="brandmark">FP</div><div><h1>Foto Peserta</h1><p>Ambil foto · Pasang twibbon · Upload</p></div><span id="cameraBadge" class="badge">Kamera belum aktif</span></header>
+<main class="layout">
+  <section class="panel camera-panel">
+    <div class="section-heading"><div><p class="eyebrow">STUDIO FOTO</p><h2>Ambil foto</h2></div><button id="startCamera" class="button button-secondary">Aktifkan kamera</button></div>
+    <div id="stage" class="stage">
+      <video id="video" autoplay playsinline muted></video>
+      <canvas id="overlayCanvas" aria-label="Pratinjau twibbon"></canvas>
+      <div id="cameraPlaceholder" class="placeholder"><div class="placeholder-icon">◎</div><strong>Kamera siap digunakan</strong><span>Izinkan akses kamera saat diminta browser.</span></div>
+      <div class="stage-tag">LIVE PREVIEW</div>
+    </div>
+    <div class="camera-controls">
+      <div class="camera-select-wrap"><label for="cameraSelect">Perangkat kamera</label><select id="cameraSelect"><option value="">Pilih kamera</option></select></div>
+      <button id="switchCamera" class="button button-secondary" title="Ganti kamera atau kamera depan/belakang">⇄ <span>Ganti kamera</span></button>
+      <button id="mirrorCamera" class="button button-secondary" aria-pressed="false" title="Balik tampilan seperti cermin">⇋ <span>Balik tampilan</span></button>
+      <button id="shutter" class="shutter" aria-label="Ambil foto" disabled><span></span></button>
+    </div>
+    <p class="hint">Di HP, tombol ganti kamera mencoba kamera depan/belakang. Di laptop, pilih webcam dari daftar jika tersedia.</p>
+    <div id="cameraError" class="message error hidden"></div>
+  </section>
+  <aside class="panel form-panel">
+    <div class="section-heading"><div><p class="eyebrow">IDENTITAS</p><h2>Data peserta</h2></div><span class="step">01 / 03</span></div>
+    <form id="participantForm" autocomplete="off">
+      <label for="daerah">Daerah penyimpanan <b>*</b></label>
+      <select id="daerah" name="daerah" required>
+        <option value="Balikpapan" selected>Balikpapan</option>
+        <option value="Samarinda">Samarinda</option>
+      </select>
+      <label for="nama">Nama lengkap <b>*</b></label><input id="nama" name="nama" placeholder="Contoh: Maulana Achmad" required maxlength="100">
+      <label for="kelompok">Kelompok <b>*</b></label><input id="kelompok" name="kelompok" list="kelompokOptions" placeholder="Cari atau ketik kelompok..." required maxlength="100" autocomplete="off"><datalist id="kelompokOptions"></datalist>
+      <label for="desa">Desa <b>*</b></label><input id="desa" name="desa" list="desaOptions" placeholder="Cari atau ketik desa..." required maxlength="100" autocomplete="off"><datalist id="desaOptions"><option value="Batu Ampar"></option><option value="Ringroad"></option><option value="Sepinggan"></option><option value="Timur Raya"></option></datalist>
+      <div class="filename-box"><span>Nama file otomatis</span><strong id="filenamePreview">Nama_Kelompok_Desa.jpg</strong><small>Nama, kelompok, dan desa digabung otomatis.</small></div>
+    </form>
+    <div class="divider"></div>
+    <div class="section-heading"><div><p class="eyebrow">HASIL FOTO</p><h2>Pratinjau</h2></div><span id="photoState" class="step">Belum ada foto</span></div>
+    <div id="resultBox" class="result-box"><div class="empty-photo">Foto hasil shutter akan muncul di sini.</div><img id="capturedPhoto" alt="Hasil foto peserta" class="hidden"></div>
+    <div class="button-row"><button id="retake" class="button button-secondary" disabled>Ambil ulang</button><button id="uploadButton" class="button button-primary" disabled>↑ Upload foto</button></div>
+    <div id="uploadMessage" class="message hidden" role="status"></div>
+  </aside>
+  <section class="panel settings-panel">
+    <div class="section-heading"><div><p class="eyebrow">PENGATURAN</p><h2>Twibbon & penyimpanan</h2></div><span class="step">02 / 03</span></div>
+    <div class="settings-grid">
+      <div class="setting-card"><div class="setting-title"><div><strong>Twibbon PNG</strong><p>Twibbon diunggah sekali ke server dan otomatis dipakai semua perangkat.</p></div><span class="setting-icon">▧</span></div>
+        <label id="twibbonFilePicker" class="file-picker" for="twibbonFile"><span>＋ Unggah twibbon bersama (sekali saja)</span><input id="twibbonFile" type="file" accept="image/png"></label>
+        <div id="twibbonServerStatus" class="cloud-status">Memeriksa twibbon bersama di server…</div>
+        <div class="twibbon-options"><label for="twibbonFit">Penempatan twibbon</label><select id="twibbonFit"><option value="cover">Memenuhi bingkai (cover)</option><option value="contain">Seluruh gambar (contain)</option></select></div>
+        <div class="twibbon-options"><label for="twibbonOpacity">Transparansi twibbon <span id="opacityValue">100%</span></label><input id="twibbonOpacity" type="range" min="20" max="100" value="100"></div>
+        <div class="twibbon-preview"><img id="twibbonPreview" alt="Pratinjau twibbon" class="hidden"><span id="twibbonEmpty">Belum ada twibbon. Foto tetap bisa diambil tanpa twibbon.</span></div>
+        <button id="removeTwibbon" class="text-button" disabled>Hapus twibbon lokal</button>
+      </div>
+      <div class="setting-card"><div class="setting-title"><div><strong>Tujuan upload</strong><p>Pilih tempat menyimpan foto hasil.</p></div><span class="setting-icon">☁</span></div>
+        <label for="provider">Penyimpanan cloud</label><select id="provider"><option value="nextcloud">Nextcloud</option><option value="gdrive">Google Drive</option></select>
+        <div id="cloudStatus" class="cloud-status">Memeriksa konfigurasi server…</div>
+        <a id="googleConnect" class="button button-secondary full-width hidden" href="/auth/google">Hubungkan Google Drive</a>
+        <button id="googleDisconnect" class="text-button hidden" type="button">Putuskan Google Drive</button>
+        <p class="hint">Alamat server dan kredensial cloud diatur melalui file <code>.env</code> di server.</p>
+      </div>
+    </div>
+  </section>
+  <section class="panel workflow-panel"><div class="section-heading"><div><p class="eyebrow">SESI FOTO</p><h2>Foto berikutnya</h2></div><span id="sessionCount" class="step">0 foto berhasil</span></div><p class="hint">Setelah upload berhasil, data identitas dibersihkan agar siap untuk peserta berikutnya. Twibbon dan kamera tetap dipertahankan.</p><div id="lastUpload" class="last-upload">Belum ada foto yang diunggah pada sesi ini.</div></section>
+</main>
+<footer>Foto Peserta · Akses kamera memerlukan HTTPS, kecuali saat mengakses localhost.</footer>
+<script src="/app.js" defer></script>
+</body></html>
