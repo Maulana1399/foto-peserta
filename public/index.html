@@ -38,11 +38,13 @@
       <label for="desa">Desa <b>*</b></label><input id="desa" name="desa" list="desaOptions" placeholder="Cari atau ketik desa..." required maxlength="100" autocomplete="off"><datalist id="desaOptions"><option value="Batu Ampar"></option><option value="Ringroad"></option><option value="Sepinggan"></option><option value="Timur Raya"></option></datalist>
       <div class="filename-box"><span>Nama file otomatis</span><strong id="filenamePreview">Nama_Kelompok_Desa.jpg</strong><small>Nama, kelompok, dan desa digabung otomatis.</small></div>
     </form>
-    <div class="divider"></div>
-    <div class="section-heading"><div><p class="eyebrow">HASIL FOTO</p><h2>Pratinjau</h2></div><span id="photoState" class="step">Belum ada foto</span></div>
-    <div id="resultBox" class="result-box"><div class="empty-photo">Foto hasil shutter akan muncul di sini.</div><img id="capturedPhoto" alt="Hasil foto peserta" class="hidden"></div>
-    <div class="button-row"><button id="retake" class="button button-secondary" disabled>Ambil ulang</button><button id="uploadButton" class="button button-primary" disabled>↑ Upload foto</button></div>
-    <div id="uploadMessage" class="message hidden" role="status"></div>
+    <div id="photoPreviewPanel" class="photo-preview-panel">
+      <div class="divider"></div>
+      <div class="section-heading"><div><p class="eyebrow">HASIL FOTO</p><h2>Pratinjau</h2></div><span id="photoState" class="step">Belum ada foto</span></div>
+      <div id="resultBox" class="result-box"><div class="empty-photo">Foto hasil shutter akan muncul di sini.</div><img id="capturedPhoto" alt="Hasil foto peserta" class="hidden"></div>
+      <div class="button-row"><button id="retake" class="button button-secondary" disabled>Ambil ulang</button><button id="uploadButton" class="button button-primary" disabled>↑ Upload foto</button></div>
+      <div id="uploadMessage" class="message hidden" role="status"></div>
+    </div>
   </aside>
   <section class="panel settings-panel">
     <div class="section-heading"><div><p class="eyebrow">PENGATURAN</p><h2>Twibbon & penyimpanan</h2></div><span class="step">02 / 03</span></div>

@@ -392,6 +392,21 @@
 
 
   $('startCamera').addEventListener('click', () => startCamera(selectedDeviceId, facing));
+  const photoPreviewPanel = $('photoPreviewPanel');
+  const cameraPanel = document.querySelector('.camera-panel');
+  const formPanel = document.querySelector('.form-panel');
+
+  function arrangePhotoPreview() {
+    if (window.matchMedia('(max-width: 850px)').matches) {
+      cameraPanel.appendChild(photoPreviewPanel);
+    } else {
+      formPanel.appendChild(photoPreviewPanel);
+    }
+  }
+
+  arrangePhotoPreview();
+  window.addEventListener('resize', arrangePhotoPreview);
+
   $('shutter').addEventListener('click', capture);
   $('switchCamera').addEventListener('click', async () => {
     if (!stream) return startCamera('', facing === 'user' ? 'environment' : 'user');

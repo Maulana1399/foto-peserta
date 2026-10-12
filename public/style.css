@@ -118,3 +118,14 @@
 .autocomplete-custom .autocomplete-option-title {
   color: #315eea !important;
 }
+
+
+/* Pratinjau foto: mengikuti panel kamera pada layar kecil. */
+.photo-preview-panel { min-width: 0; }
+.photo-preview-panel .divider { margin-top: 21px; }
+@media (max-width: 850px) {
+  .photo-preview-panel { margin-top: 18px; }
+  .photo-preview-panel .divider { margin-top: 0; }
+  .photo-preview-panel .result-box { min-height: 120px; }
+  .photo-preview-panel .result-box img { max-height: 420px; }
+}
