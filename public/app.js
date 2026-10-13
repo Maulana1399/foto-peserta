@@ -354,10 +354,17 @@
     const outputH = Math.round(sh);
     const outputW = Math.round(outputH * targetRatio);
 
+    // Foto raw: seluruh frame kamera, tanpa crop dan tanpa twibbon.
     const rawCanvas = document.createElement('canvas');
-    rawCanvas.width = outputW;
-    rawCanvas.height = outputH;
-    rawCanvas.getContext('2d').drawImage(
+    rawCanvas.width = sourceW;
+    rawCanvas.height = sourceH;
+    rawCanvas.getContext('2d').drawImage(video, 0, 0, sourceW, sourceH);
+
+    // Foto bertwibbon: tetap menggunakan crop 4:5 seperti sebelumnya.
+    const croppedCanvas = document.createElement('canvas');
+    croppedCanvas.width = outputW;
+    croppedCanvas.height = outputH;
+    croppedCanvas.getContext('2d').drawImage(
       video, sx, sy, sw, sh, 0, 0, outputW, outputH
     );
 
@@ -365,7 +372,7 @@
     finalCanvas.width = outputW;
     finalCanvas.height = outputH;
     const c = finalCanvas.getContext('2d');
-    c.drawImage(rawCanvas, 0, 0);
+    c.drawImage(croppedCanvas, 0, 0);
 
     if (twibbonImage) {
       c.save();

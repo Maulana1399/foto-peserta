@@ -252,7 +252,7 @@ app.post('/auth/google/disconnect', (_req, res) => {
 function encodePath(p) {
   return String(p).split('/').filter(Boolean).map(encodeURIComponent).join('/');
 }
-async function nextcloudUpload(filename, buffer, mime, daerah) {
+async function nextcloudUpload(filename, buffer, mime, daerah, isRaw = false) {
   const base = String(process.env.NEXTCLOUD_URL || '').replace(/\/+$/, '');
   const token = process.env.NEXTCLOUD_SHARE_TOKEN;
   const password = process.env.NEXTCLOUD_SHARE_PASSWORD || '';
@@ -269,7 +269,7 @@ async function nextcloudUpload(filename, buffer, mime, daerah) {
 
   const baseDir = String(process.env.NEXTCLOUD_REMOTE_DIR || '')
     .replace(/^\/+|\/+$/g, '');
-  const remoteDir = [baseDir, daerah].filter(Boolean).join('/');
+  const remoteDir = [baseDir, daerah, ...(isRaw ? ['raw'] : [])].filter(Boolean).join('/');
 
   for (const segment of remoteDir.split('/').filter(Boolean)) {
     current += '/' + encodeURIComponent(segment);
@@ -305,7 +305,7 @@ async function nextcloudUpload(filename, buffer, mime, daerah) {
     location: `/${remoteDir ? remoteDir + '/' : ''}${filename}`
   };
 }
-async function googleDriveUpload(filename, buffer, mime) {
+async function googleDriveUpload(filename, buffer, mime, isRaw = false) {
   if (!googleConfigured()) throw new Error('Google Drive belum dikonfigurasi di .env.');
   const tokens = readGoogleTokens();
   if (!tokens || !tokens.refresh_token) throw new Error('Google Drive belum terhubung. Klik Hubungkan Google Drive terlebih dahulu.');
@@ -316,9 +316,46 @@ async function googleDriveUpload(filename, buffer, mime) {
     fs.writeFileSync(TOKEN_PATH, JSON.stringify({ ...old, ...newTokens, refresh_token: newTokens.refresh_token || old.refresh_token }, null, 2), { mode: 0o600 });
   });
   const drive = google.drive({ version: 'v3', auth });
+  let parentId = process.env.GOOGLE_DRIVE_FOLDER_ID || null;
+
+  if (isRaw) {
+    const queryParts = [
+      "name = 'raw'",
+      "mimeType = 'application/vnd.google-apps.folder'",
+      "trashed = false"
+    ];
+    if (parentId) queryParts.push("'" + parentId.replace(/'/g, "\\'") + "' in parents");
+    else queryParts.push("'root' in parents");
+
+    const found = await drive.files.list({
+      q: queryParts.join(' and '),
+      pageSize: 100,
+      fields: 'files(id,name)'
+    });
+
+    if (found.data.files?.length) {
+      parentId = found.data.files[0].id;
+    } else {
+      const folderMetadata = {
+        name: 'raw',
+        mimeType: 'application/vnd.google-apps.folder'
+      };
+      if (parentId) folderMetadata.parents = [parentId];
+      const folder = await drive.files.create({
+        requestBody: folderMetadata,
+        fields: 'id,name'
+      });
+      parentId = folder.data.id;
+    }
+  }
+
   const metadata = { name: filename, mimeType: mime };
-  if (process.env.GOOGLE_DRIVE_FOLDER_ID) metadata.parents = [process.env.GOOGLE_DRIVE_FOLDER_ID];
-  const result = await drive.files.create({ requestBody: metadata, media: { mimeType: mime, body: require('stream').Readable.from(buffer) }, fields: 'id,name,webViewLink' });
+  if (parentId) metadata.parents = [parentId];
+  const result = await drive.files.create({
+    requestBody: metadata,
+    media: { mimeType: mime, body: require('stream').Readable.from(buffer) },
+    fields: 'id,name,webViewLink'
+  });
   return { provider: 'Google Drive', filename: result.data.name, fileId: result.data.id, url: result.data.webViewLink || null };
 }
 app.post('/api/upload', upload.fields([
@@ -356,12 +393,12 @@ app.post('/api/upload', upload.fields([
     const rawFilename = filename.replace(/\.jpg$/i, '_raw.jpg');
 
     // Simpan hasil bertwibbon dan raw ke tujuan cloud yang sama.
-    const saveFile = (name, file) => provider === 'nextcloud'
-      ? nextcloudUpload(name, file.buffer, file.mimetype, daerah)
-      : googleDriveUpload(name, file.buffer, file.mimetype);
+    const saveFile = (name, file, isRaw = false) => provider === 'nextcloud'
+      ? nextcloudUpload(name, file.buffer, file.mimetype, daerah, isRaw)
+      : googleDriveUpload(name, file.buffer, file.mimetype, isRaw);
 
     const result = await saveFile(filename, photo);
-    const rawResult = await saveFile(rawFilename, rawPhoto);
+    const rawResult = await saveFile(rawFilename, rawPhoto, true);
 
     res.json({
       ok: true,
