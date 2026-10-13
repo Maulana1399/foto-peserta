@@ -55,6 +55,43 @@ function getCloudStatus() {
     }
   };
 }
+
+const LOGO_FILES = {
+  kja: 'KJA LOGO.png',
+  'perfect-match': 'PERFECT MATCH X LINK IN.png',
+  generus: 'Glossy Bear Emblem with Generus Balikpapan.png',
+  ppg: 'Logo PPG Balikpapan 2.png',
+};
+
+app.get('/api/logos/:name', async (req, res) => {
+  const filename = LOGO_FILES[req.params.name];
+  if (!filename) return res.sendStatus(404);
+
+  try {
+    const url = 'http://192.168.1.8:30027/s/cQjC5Kmx4jYEqBp/download?path=%2F&files='
+      + encodeURIComponent(filename);
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      console.error('Nextcloud logo error:', response.status, filename);
+      return res.status(502).send('Logo tidak tersedia');
+    }
+
+    const contentType = response.headers.get('content-type') || '';
+    if (!contentType.startsWith('image/')) {
+      return res.status(502).send('Respons logo tidak valid');
+    }
+
+    const buffer = Buffer.from(await response.arrayBuffer());
+    res.set('Content-Type', contentType);
+    res.set('Cache-Control', 'public, max-age=60');
+    res.send(buffer);
+  } catch (error) {
+    console.error('Logo proxy error:', error.message);
+    res.status(502).send('Gagal mengambil logo dari Nextcloud');
+  }
+});
+
 app.get('/api/status', (_req, res) => res.json(getCloudStatus()));
 
 // Galeri twibbon bersama.
