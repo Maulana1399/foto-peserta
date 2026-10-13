@@ -49,13 +49,15 @@
   <section class="panel settings-panel">
     <div class="section-heading"><div><p class="eyebrow">PENGATURAN</p><h2>Twibbon & penyimpanan</h2></div><span class="step">02 / 03</span></div>
     <div class="settings-grid">
-      <div class="setting-card"><div class="setting-title"><div><strong>Twibbon PNG</strong><p>Twibbon diunggah sekali ke server dan otomatis dipakai semua perangkat.</p></div><span class="setting-icon">▧</span></div>
-        <label id="twibbonFilePicker" class="file-picker" for="twibbonFile"><span>＋ Unggah twibbon bersama (sekali saja)</span><input id="twibbonFile" type="file" accept="image/png"></label>
+      <div class="setting-card"><div class="setting-title"><div><strong>Twibbon PNG</strong><p>Simpan beberapa desain, lalu pilih satu untuk digunakan semua perangkat.</p></div><span class="setting-icon">▧</span></div>
+        <label id="twibbonFilePicker" class="file-picker" for="twibbonFile"><span>＋ Tambah Twibbon PNG ke Galeri</span><input id="twibbonFile" type="file" accept="image/png"></label>
         <div id="twibbonServerStatus" class="cloud-status">Memeriksa twibbon bersama di server…</div>
         <div class="twibbon-options"><label for="twibbonFit">Penempatan twibbon</label><select id="twibbonFit"><option value="cover">Memenuhi bingkai (cover)</option><option value="contain">Seluruh gambar (contain)</option></select></div>
         <div class="twibbon-options"><label for="twibbonOpacity">Transparansi twibbon <span id="opacityValue">100%</span></label><input id="twibbonOpacity" type="range" min="20" max="100" value="100"></div>
         <div class="twibbon-preview"><img id="twibbonPreview" alt="Pratinjau twibbon" class="hidden"><span id="twibbonEmpty">Belum ada twibbon. Foto tetap bisa diambil tanpa twibbon.</span></div>
-        <button id="removeTwibbon" class="text-button" disabled>Hapus twibbon lokal</button>
+        <div class="twibbon-gallery-heading"><strong>Galeri Twibbon</strong><span>Pilih desain untuk semua perangkat</span></div>
+        <div id="twibbonGallery" class="twibbon-gallery"><p class="gallery-empty">Memuat galeri twibbon…</p></div>
+        <button id="removeTwibbon" class="text-button" disabled>Hapus twibbon aktif</button>
       </div>
       <div class="setting-card"><div class="setting-title"><div><strong>Tujuan upload</strong><p>Pilih tempat menyimpan foto hasil.</p></div><span class="setting-icon">☁</span></div>
         <label for="provider">Penyimpanan cloud</label><select id="provider"><option value="nextcloud">Nextcloud</option><option value="gdrive">Google Drive</option></select>
@@ -69,5 +71,5 @@
   <section class="panel workflow-panel"><div class="section-heading"><div><p class="eyebrow">SESI FOTO</p><h2>Foto berikutnya</h2></div><span id="sessionCount" class="step">0 foto berhasil</span></div><p class="hint">Setelah upload berhasil, data identitas dibersihkan agar siap untuk peserta berikutnya. Twibbon dan kamera tetap dipertahankan.</p><div id="lastUpload" class="last-upload">Belum ada foto yang diunggah pada sesi ini.</div></section>
 </main>
 <footer>Foto Peserta · Akses kamera memerlukan HTTPS, kecuali saat mengakses localhost.</footer>
-<script src="/app.js" defer></script>
+<script src="/app.js?v=twibbon-gallery-v1" defer></script>
 </body></html>

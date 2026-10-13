@@ -55,94 +55,269 @@
   }
   function drawOverlay() {
     if (!video.videoWidth || !video.videoHeight) return;
+
     const rect = $('stage').getBoundingClientRect();
-    const vw = video.videoWidth, vh = video.videoHeight;
-    const scale = Math.min(rect.width / vw, rect.height / vh);
-    const drawW = vw * scale, drawH = vh * scale;
-    const dx = (rect.width - drawW) / 2, dy = (rect.height - drawH) / 2;
+    if (!rect.width || !rect.height) return;
+
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    canvas.width = Math.round(rect.width * dpr); canvas.height = Math.round(rect.height * dpr);
-    canvas.style.width = `${rect.width}px`; canvas.style.height = `${rect.height}px`;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, rect.width, rect.height);
-    if (twibbonImage) {
-      ctx.save(); ctx.globalAlpha = Number($('twibbonOpacity').value) / 100;
-      if ($('twibbonFit').value === 'contain') {
-        const s = Math.min(drawW / twibbonImage.width, drawH / twibbonImage.height);
-        const w = twibbonImage.width * s, h = twibbonImage.height * s;
-        ctx.drawImage(twibbonImage, dx + (drawW - w) / 2, dy + (drawH - h) / 2, w, h);
-      } else {
-        const s = Math.max(drawW / twibbonImage.width, drawH / twibbonImage.height);
-        const w = twibbonImage.width * s, h = twibbonImage.height * s;
-        ctx.drawImage(twibbonImage, dx + (drawW - w) / 2, dy + (drawH - h) / 2, w, h);
-      }
-      ctx.restore();
-    }
+    canvas.width = Math.round(rect.width * dpr);
+    canvas.height = Math.round(rect.height * dpr);
+    canvas.style.width = `${rect.width}px`;
+    canvas.style.height = `${rect.height}px`;
+
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, rect.width, rect.height);
+
+    if (!twibbonImage) return;
+
+    ctx.save();
+    ctx.globalAlpha = Number($('twibbonOpacity').value) / 100;
+
+    const fit = $('twibbonFit').value;
+    const scale = fit === 'contain'
+      ? Math.min(rect.width / twibbonImage.width, rect.height / twibbonImage.height)
+      : Math.max(rect.width / twibbonImage.width, rect.height / twibbonImage.height);
+
+    const w = twibbonImage.width * scale;
+    const h = twibbonImage.height * scale;
+
+    ctx.drawImage(
+      twibbonImage,
+      (rect.width - w) / 2,
+      (rect.height - h) / 2,
+      w,
+      h
+    );
+
+    ctx.restore();
   }
+
+  let activeTwibbonId = null;
+
   function showTwibbonImage(img, url, isShared = false) {
-    if (twibbonObjectUrl && twibbonObjectUrl.startsWith('blob:')) URL.revokeObjectURL(twibbonObjectUrl);
-    twibbonObjectUrl = url; twibbonImage = img;
-    $('twibbonPreview').src = url; $('twibbonPreview').classList.remove('hidden'); $('twibbonEmpty').classList.add('hidden');
-    $('removeTwibbon').disabled = isShared;
-    $('twibbonFilePicker').classList.toggle('hidden', isShared);
-    $('twibbonServerStatus').textContent = isShared ? 'Twibbon bersama aktif di server. Semua perangkat menggunakan gambar yang sama.' : 'Twibbon dipilih. Mengunggah sebagai twibbon bersama…';
-    $('twibbonServerStatus').className = `cloud-status ${isShared ? 'good' : 'bad'}`;
+    if (twibbonObjectUrl && twibbonObjectUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(twibbonObjectUrl);
+    }
+    twibbonObjectUrl = url;
+    twibbonImage = img;
+    $('twibbonPreview').src = url;
+    $('twibbonPreview').classList.remove('hidden');
+    $('twibbonEmpty').classList.add('hidden');
+    $('removeTwibbon').disabled = !isShared || !activeTwibbonId;
+    $('twibbonFilePicker').classList.remove('hidden');
     drawOverlay();
   }
-  function loadTwibbon(file) {
-    if (!file) return;
-    if (file.type !== 'image/png') { setMessage('uploadMessage', 'Twibbon bersama harus berupa PNG transparan.', 'error'); $('twibbonFile').value = ''; return; }
-    if (file.size > 12 * 1024 * 1024) { setMessage('uploadMessage', 'Ukuran twibbon maksimal 12 MB.', 'error'); $('twibbonFile').value = ''; return; }
-    const url = URL.createObjectURL(file), img = new Image();
-    img.onload = async () => {
-      try {
-        const fd = new FormData(); fd.append('twibbon', file, 'twibbon.png');
-        const response = await fetch('/api/twibbon', { method: 'POST', body: fd });
-        const data = await response.json().catch(() => ({}));
-        if (response.status === 409) {
-          URL.revokeObjectURL(url); $('twibbonFile').value = '';
-          await initializeTwibbon();
-          setMessage('uploadMessage', 'Twibbon sudah diatur dari perangkat lain; twibbon server telah dimuat.', 'info');
-          return;
-        }
-        if (!response.ok || !data.ok) throw new Error(data.error || 'Gagal menyimpan twibbon di server.');
-        showTwibbonImage(img, url, true); hideMessage('uploadMessage');
-      } catch (e) {
-        // Jangan gunakan twibbon lokal saja, karena perangkat lain tidak akan menerimanya.
-        URL.revokeObjectURL(url); $('twibbonFile').value = '';
-        setMessage('uploadMessage', e.message || 'Gagal mengunggah twibbon ke server.', 'error');
-      }
-    };
-    img.onerror = () => { URL.revokeObjectURL(url); setMessage('uploadMessage', 'File twibbon tidak dapat dibaca.', 'error'); };
-    img.src = url;
+
+  function clearActiveTwibbon() {
+    if (twibbonObjectUrl && twibbonObjectUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(twibbonObjectUrl);
+    }
+    twibbonObjectUrl = null;
+    twibbonImage = null;
+    activeTwibbonId = null;
+    $('twibbonPreview').removeAttribute('src');
+    $('twibbonPreview').classList.add('hidden');
+    $('twibbonEmpty').classList.remove('hidden');
+    $('removeTwibbon').disabled = true;
+    drawOverlay();
   }
+
+  async function renderTwibbonGallery() {
+    const gallery = $('twibbonGallery');
+    const response = await fetch(`/api/twibbons?v=${Date.now()}`, {
+      cache: 'no-store'
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Galeri gagal dimuat.');
+
+    const items = Array.isArray(data.items) ? data.items : [];
+    activeTwibbonId = data.activeId ||
+      (data.active && data.active.id) ||
+      (items.find(item => item.active || item.isActive) || {}).id ||
+      null;
+
+    gallery.replaceChildren();
+
+    if (!items.length) {
+      const empty = document.createElement('p');
+      empty.className = 'gallery-empty';
+      empty.textContent = 'Belum ada desain. Tambahkan file PNG di atas.';
+      gallery.appendChild(empty);
+      return;
+    }
+
+    for (const item of items) {
+      const card = document.createElement('div');
+      card.className = 'twibbon-gallery-item';
+
+      const thumbnail = document.createElement('img');
+      thumbnail.className = 'twibbon-gallery-thumb';
+      thumbnail.alt = item.name || item.filename || 'Pratinjau twibbon';
+      thumbnail.loading = 'lazy';
+      thumbnail.src = `/api/twibbons/${encodeURIComponent(item.id)}/image?v=${Date.now()}`;
+
+      const details = document.createElement('div');
+      details.className = 'twibbon-gallery-details';
+
+      const name = document.createElement('strong');
+      name.className = 'twibbon-gallery-name';
+      name.textContent = item.name || item.filename || 'Twibbon PNG';
+      details.appendChild(name);
+
+      const isActive = item.id === activeTwibbonId;
+      const badge = document.createElement('span');
+      badge.className = isActive ? 'twibbon-active-badge' : 'twibbon-inactive-badge';
+      badge.textContent = isActive ? '✓ Sedang aktif' : 'Tersimpan';
+      details.appendChild(badge);
+
+      const actions = document.createElement('div');
+      actions.className = 'twibbon-gallery-actions';
+
+      if (!isActive) {
+        const activate = document.createElement('button');
+        activate.type = 'button';
+        activate.className = 'button button-secondary';
+        activate.textContent = 'Aktifkan';
+        activate.addEventListener('click', async () => {
+          activate.disabled = true;
+          try {
+            const result = await fetch(
+              `/api/twibbons/${encodeURIComponent(item.id)}/activate`,
+              { method: 'POST' }
+            );
+            const body = await result.json().catch(() => ({}));
+            if (!result.ok || body.ok === false) {
+              throw new Error(body.error || 'Gagal mengaktifkan twibbon.');
+            }
+            await initializeTwibbon();
+          } catch (error) {
+            alert(error.message || 'Gagal mengaktifkan twibbon.');
+            activate.disabled = false;
+          }
+        });
+        actions.appendChild(activate);
+      }
+
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'button gallery-delete';
+      remove.textContent = 'Hapus';
+      remove.addEventListener('click', async () => {
+        if (!confirm(`Hapus desain "${name.textContent}" dari galeri?`)) return;
+        remove.disabled = true;
+        try {
+          const result = await fetch(
+            `/api/twibbons/${encodeURIComponent(item.id)}`,
+            { method: 'DELETE' }
+          );
+          const body = await result.json().catch(() => ({}));
+          if (!result.ok || body.ok === false) {
+            throw new Error(body.error || 'Gagal menghapus twibbon.');
+          }
+          await initializeTwibbon();
+        } catch (error) {
+          alert(error.message || 'Gagal menghapus twibbon.');
+          remove.disabled = false;
+        }
+      });
+      actions.appendChild(remove);
+
+      details.appendChild(actions);
+      card.append(thumbnail, details);
+      gallery.appendChild(card);
+    }
+  }
+
+  async function loadTwibbon(file) {
+    if (!file) return;
+    if (file.type !== 'image/png') {
+      setMessage('uploadMessage', 'Twibbon harus berupa file PNG.', 'error');
+      $('twibbonFile').value = '';
+      return;
+    }
+    if (file.size > 12 * 1024 * 1024) {
+      setMessage('uploadMessage', 'Ukuran twibbon maksimal 12 MB.', 'error');
+      $('twibbonFile').value = '';
+      return;
+    }
+
+    const picker = $('twibbonFilePicker');
+    const label = picker.querySelector('span');
+    const previousLabel = label.textContent;
+    label.textContent = 'Mengunggah twibbon…';
+
+    try {
+      const fd = new FormData();
+      fd.append('twibbon', file, file.name || 'twibbon.png');
+
+      const response = await fetch('/api/twibbons', {
+        method: 'POST',
+        body: fd
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || data.ok === false) {
+        throw new Error(data.error || 'Gagal menyimpan twibbon ke server.');
+      }
+
+      hideMessage('uploadMessage');
+      await initializeTwibbon();
+    } catch (error) {
+      setMessage(
+        'uploadMessage',
+        error.message || 'Gagal mengunggah twibbon.',
+        'error'
+      );
+    } finally {
+      label.textContent = previousLabel;
+      $('twibbonFile').value = '';
+    }
+  }
+
   async function initializeTwibbon() {
     const picker = $('twibbonFilePicker');
     const status = $('twibbonServerStatus');
+
+    picker.classList.remove('hidden');
+    status.className = 'cloud-status';
+    status.textContent = 'Memuat galeri twibbon…';
+
     try {
-      const response = await fetch('/api/twibbon/status', { cache: 'no-store' });
-      const state = await response.json();
-      if (!state.configured) {
-        picker.classList.remove('hidden');
-        status.className = 'cloud-status';
-        status.textContent = 'Belum ada twibbon bersama. Unggah PNG satu kali dari perangkat mana saja.';
-        $('removeTwibbon').disabled = true;
+      await renderTwibbonGallery();
+
+      if (!activeTwibbonId) {
+        clearActiveTwibbon();
+        status.textContent = 'Belum ada twibbon aktif. Tambahkan PNG atau pilih desain dari galeri.';
         return;
       }
-      picker.classList.add('hidden');
-      status.className = 'cloud-status good';
-      status.textContent = 'Memuat twibbon bersama dari server…';
-      const imageResponse = await fetch(`/api/twibbon?v=${Date.now()}`, { cache: 'no-store' });
-      if (!imageResponse.ok) throw new Error('Twibbon server tidak dapat dimuat.');
-      const blob = await imageResponse.blob();
-      const url = URL.createObjectURL(blob), img = new Image();
-      img.onload = () => showTwibbonImage(img, url, true);
-      img.onerror = () => { URL.revokeObjectURL(url); status.className = 'cloud-status bad'; status.textContent = 'File twibbon di server tidak dapat dibaca.'; };
+
+      const response = await fetch(`/api/twibbon?v=${Date.now()}`, {
+        cache: 'no-store'
+      });
+      if (!response.ok) {
+        throw new Error('Gambar twibbon aktif gagal dimuat.');
+      }
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const img = new Image();
+
+      img.onload = () => {
+        showTwibbonImage(img, url, true);
+        status.className = 'cloud-status good';
+        status.textContent = 'Twibbon aktif tersimpan di server dan digunakan semua perangkat.';
+      };
+
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        status.className = 'cloud-status bad';
+        status.textContent = 'Gambar twibbon aktif tidak dapat dibaca.';
+      };
+
       img.src = url;
-    } catch (e) {
-      picker.classList.remove('hidden');
+    } catch (error) {
       status.className = 'cloud-status bad';
-      status.textContent = 'Tidak dapat memeriksa twibbon server. Periksa koneksi lalu muat ulang.';
-      console.warn('Gagal memuat twibbon bersama:', e);
+      status.textContent = error.message || 'Galeri gagal dimuat. Periksa koneksi server.';
+      console.warn('Gagal memuat galeri twibbon:', error);
     }
   }
   function canvasBlob(canvas) {
@@ -152,32 +327,65 @@
   }
 
   async function capture() {
-    if (!stream || !video.videoWidth) return;
+    if (!stream || !video.videoWidth || !video.videoHeight) return;
     const version = ++captureVersion;
 
+    // Crop tengah ke rasio portrait Instagram 4:5.
+    const sourceW = video.videoWidth;
+    const sourceH = video.videoHeight;
+    const targetRatio = 4 / 5;
+    const sourceRatio = sourceW / sourceH;
+
+    let sx = 0, sy = 0, sw = sourceW, sh = sourceH;
+
+    if (sourceRatio > targetRatio) {
+      sw = sourceH * targetRatio;
+      sx = (sourceW - sw) / 2;
+    } else if (sourceRatio < targetRatio) {
+      sh = sourceW / targetRatio;
+      sy = (sourceH - sh) / 2;
+    }
+
+    // Pertahankan resolusi kamera pada area crop.
+    const outputH = Math.round(sh);
+    const outputW = Math.round(outputH * targetRatio);
+
     const rawCanvas = document.createElement('canvas');
-    rawCanvas.width = video.videoWidth;
-    rawCanvas.height = video.videoHeight;
-    rawCanvas.getContext('2d').drawImage(video, 0, 0, rawCanvas.width, rawCanvas.height);
+    rawCanvas.width = outputW;
+    rawCanvas.height = outputH;
+    rawCanvas.getContext('2d').drawImage(
+      video, sx, sy, sw, sh,
+      0, 0, outputW, outputH
+    );
 
     const finalCanvas = document.createElement('canvas');
-    finalCanvas.width = rawCanvas.width;
-    finalCanvas.height = rawCanvas.height;
+    finalCanvas.width = outputW;
+    finalCanvas.height = outputH;
     const c = finalCanvas.getContext('2d');
     c.drawImage(rawCanvas, 0, 0);
 
     if (twibbonImage) {
       c.save();
       c.globalAlpha = Number($('twibbonOpacity').value) / 100;
+
       if ($('twibbonFit').value === 'contain') {
-        const s = Math.min(finalCanvas.width / twibbonImage.width, finalCanvas.height / twibbonImage.height);
-        const w = twibbonImage.width * s, h = twibbonImage.height * s;
-        c.drawImage(twibbonImage, (finalCanvas.width - w) / 2, (finalCanvas.height - h) / 2, w, h);
+        const scale = Math.min(
+          outputW / twibbonImage.width,
+          outputH / twibbonImage.height
+        );
+        const w = twibbonImage.width * scale;
+        const h = twibbonImage.height * scale;
+        c.drawImage(twibbonImage, (outputW - w) / 2, (outputH - h) / 2, w, h);
       } else {
-        const s = Math.max(finalCanvas.width / twibbonImage.width, finalCanvas.height / twibbonImage.height);
-        const w = twibbonImage.width * s, h = twibbonImage.height * s;
-        c.drawImage(twibbonImage, (finalCanvas.width - w) / 2, (finalCanvas.height - h) / 2, w, h);
+        const scale = Math.max(
+          outputW / twibbonImage.width,
+          outputH / twibbonImage.height
+        );
+        const w = twibbonImage.width * scale;
+        const h = twibbonImage.height * scale;
+        c.drawImage(twibbonImage, (outputW - w) / 2, (outputH - h) / 2, w, h);
       }
+
       c.restore();
     }
 
@@ -186,13 +394,15 @@
         canvasBlob(rawCanvas),
         canvasBlob(finalCanvas)
       ]);
-      // Jika ada foto lebih baru, jangan timpa pratinjau terbaru.
+
       if (version !== captureVersion) return;
 
       capturedRawBlob = rawBlob;
       capturedBlob = finalBlob;
+
       if (capturedUrl) URL.revokeObjectURL(capturedUrl);
       capturedUrl = URL.createObjectURL(finalBlob);
+
       $('capturedPhoto').src = capturedUrl;
       $('capturedPhoto').classList.remove('hidden');
       $('resultBox').querySelector('.empty-photo').classList.add('hidden');
@@ -509,11 +719,29 @@
   $('twibbonFile').addEventListener('change', e => loadTwibbon(e.target.files[0]));
   $('twibbonOpacity').addEventListener('input', () => { $('opacityValue').textContent = `${$('twibbonOpacity').value}%`; drawOverlay(); });
   $('twibbonFit').addEventListener('change', drawOverlay);
-  $('removeTwibbon').addEventListener('click', () => { if ($('removeTwibbon').disabled) return; if (twibbonObjectUrl && twibbonObjectUrl.startsWith('blob:')) URL.revokeObjectURL(twibbonObjectUrl); twibbonObjectUrl = null; twibbonImage = null; $('twibbonPreview').removeAttribute('src'); $('twibbonPreview').classList.add('hidden'); $('twibbonEmpty').classList.remove('hidden'); $('removeTwibbon').disabled = true; $('twibbonFile').value = ''; drawOverlay(); });
-  $('retake').addEventListener('click', () => { captureVersion++; capturedBlob = null; capturedRawBlob = null; if (capturedUrl) URL.revokeObjectURL(capturedUrl); capturedUrl = null; $('capturedPhoto').removeAttribute('src'); $('capturedPhoto').classList.add('hidden'); $('resultBox').querySelector('.empty-photo').classList.remove('hidden'); $('photoState').textContent = 'Belum ada foto'; $('uploadButton').disabled = true; $('uploadButton').textContent = '↑ Upload foto'; $('retake').disabled = true; hideMessage('uploadMessage'); });
-  $('uploadButton').addEventListener('click', uploadPhoto);
-  $('provider').addEventListener('change', checkStatus);
-  $('googleDisconnect').addEventListener('click', async () => { await fetch('/auth/google/disconnect', { method: 'POST' }); checkStatus(); });
+  $('removeTwibbon').addEventListener('click', async () => {
+    if ($('removeTwibbon').disabled || !activeTwibbonId) return;
+    if (!confirm('Hapus twibbon yang sedang aktif dari galeri?')) return;
+
+    const button = $('removeTwibbon');
+    button.disabled = true;
+
+    try {
+      const response = await fetch(
+        `/api/twibbons/${encodeURIComponent(activeTwibbonId)}`,
+        { method: 'DELETE' }
+      );
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || data.ok === false) {
+        throw new Error(data.error || 'Gagal menghapus twibbon aktif.');
+      }
+      await initializeTwibbon();
+    } catch (error) {
+      alert(error.message || 'Gagal menghapus twibbon aktif.');
+      button.disabled = !activeTwibbonId;
+    }
+  });
+
   video.addEventListener('loadedmetadata', drawOverlay);
   window.addEventListener('resize', drawOverlay);
   window.addEventListener('beforeunload', stopCamera);

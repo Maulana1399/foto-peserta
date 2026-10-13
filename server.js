@@ -57,36 +57,171 @@ function getCloudStatus() {
 }
 app.get('/api/status', (_req, res) => res.json(getCloudStatus()));
 
-// Twibbon bersama: disimpan pada volume persisten /app/data dan hanya bisa diunggah sekali.
+// Galeri twibbon bersama.
+const TWIBBON_DIR = path.join(DATA_DIR, 'twibbons');
+const TWIBBON_INDEX = path.join(TWIBBON_DIR, 'index.json');
+const TWIBBON_ACTIVE = path.join(TWIBBON_DIR, 'active.json');
+
+fs.mkdirSync(TWIBBON_DIR, { recursive: true, mode: 0o700 });
+
+function readTwibbonIndex() {
+  try {
+    const value = JSON.parse(fs.readFileSync(TWIBBON_INDEX, 'utf8'));
+    return Array.isArray(value) ? value : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeTwibbonIndex(items) {
+  const temp = `${TWIBBON_INDEX}.${process.pid}.tmp`;
+  fs.writeFileSync(temp, JSON.stringify(items, null, 2), { mode: 0o600 });
+  fs.renameSync(temp, TWIBBON_INDEX);
+}
+
+function readActiveTwibbon() {
+  try {
+    return JSON.parse(fs.readFileSync(TWIBBON_ACTIVE, 'utf8')).id || null;
+  } catch {
+    return null;
+  }
+}
+
+function writeActiveTwibbon(id) {
+  const temp = `${TWIBBON_ACTIVE}.${process.pid}.tmp`;
+  fs.writeFileSync(temp, JSON.stringify({ id }), { mode: 0o600 });
+  fs.renameSync(temp, TWIBBON_ACTIVE);
+}
+
+function twibbonFile(id) {
+  if (!/^[a-f0-9-]{8,64}$/i.test(String(id))) return null;
+  return path.join(TWIBBON_DIR, `${id}.png`);
+}
+
+function migrateLegacyTwibbon() {
+  let items = readTwibbonIndex();
+
+  if (!items.length && fs.existsSync(TWIBBON_PATH)) {
+    const id = require('crypto').randomUUID();
+    fs.copyFileSync(TWIBBON_PATH, path.join(TWIBBON_DIR, `${id}.png`));
+    items = [{ id, name: 'Twibbon lama', createdAt: new Date().toISOString() }];
+    writeTwibbonIndex(items);
+    writeActiveTwibbon(id);
+    console.log('[twibbon-gallery] Twibbon lama dimigrasikan ke galeri.');
+  }
+
+  if (items.length && !items.some(item => item.id === readActiveTwibbon())) {
+    writeActiveTwibbon(items[0].id);
+  }
+}
+
+migrateLegacyTwibbon();
+
+app.get('/api/twibbons', (_req, res) => {
+  res.set('Cache-Control', 'no-store');
+  const items = readTwibbonIndex();
+  const activeId = readActiveTwibbon();
+  res.json({
+    items: items.map(item => ({ ...item, active: item.id === activeId })),
+    activeId
+  });
+});
+
 app.get('/api/twibbon/status', (_req, res) => {
   res.set('Cache-Control', 'no-store');
-  res.json({ configured: fs.existsSync(TWIBBON_PATH) });
+  res.json({ configured: Boolean(readActiveTwibbon()) });
 });
-app.get('/api/twibbon', (_req, res) => {
-  if (!fs.existsSync(TWIBBON_PATH)) return res.status(404).json({ error: 'Twibbon belum diunggah.' });
+
+app.get('/api/twibbon', (req, res) => {
   res.set('Cache-Control', 'no-store');
-  res.type('png').sendFile(TWIBBON_PATH);
+  const id = readActiveTwibbon();
+  const file = id && twibbonFile(id);
+  if (!file || !fs.existsSync(file)) {
+    return res.status(404).json({ error: 'Belum ada twibbon aktif.' });
+  }
+  res.type('png').sendFile(file);
 });
-app.post('/api/twibbon', twibbonUpload.single('twibbon'), async (req, res) => {
-  if (fs.existsSync(TWIBBON_PATH)) return res.status(409).json({ error: 'Twibbon bersama sudah tersedia.' });
+
+app.post('/api/twibbons', twibbonUpload.single('twibbon'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'File twibbon tidak ditemukan.' });
-  const pngSignature = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
-  if (req.file.mimetype !== 'image/png' || !req.file.buffer.subarray(0, 8).equals(pngSignature)) {
+
+  const signature = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+  if (req.file.mimetype !== 'image/png' || !req.file.buffer.subarray(0, 8).equals(signature)) {
     return res.status(415).json({ error: 'Twibbon harus berupa file PNG yang valid.' });
   }
-  let handle;
+
+  const id = require('crypto').randomUUID();
+  const file = twibbonFile(id);
   try {
-    // wx mencegah dua perangkat menimpa file jika mengunggah hampir bersamaan.
-    handle = await fs.promises.open(TWIBBON_PATH, 'wx', 0o600);
-    await handle.writeFile(req.file.buffer);
-    await handle.close();
-    handle = null;
-    res.status(201).json({ ok: true, configured: true });
+    await fs.promises.writeFile(file, req.file.buffer, { flag: 'wx', mode: 0o600 });
+    const items = readTwibbonIndex();
+    items.push({
+      id,
+      name: path.basename(req.file.originalname || 'Twibbon').replace(/\.png$/i, '').slice(0, 100) || 'Twibbon',
+      createdAt: new Date().toISOString()
+    });
+    writeTwibbonIndex(items);
+
+    // Otomatis aktifkan desain yang baru ditambahkan.
+    writeActiveTwibbon(id);
+    res.status(201).json({ ok: true, id, activeId: id });
   } catch (e) {
-    if (handle) await handle.close().catch(() => {});
-    if (e.code === 'EEXIST') return res.status(409).json({ error: 'Twibbon bersama sudah tersedia.' });
-    console.error('[twibbon]', e.message);
-    res.status(500).json({ error: 'Twibbon gagal disimpan di server.' });
+    await fs.promises.unlink(file).catch(() => {});
+    console.error('[twibbon-gallery-add]', e.message);
+    res.status(500).json({ error: 'Twibbon gagal disimpan ke galeri.' });
+  }
+});
+
+
+app.get('/api/twibbons/:id/image', (req, res) => {
+  const item = readTwibbonIndex().find(item => item.id === req.params.id);
+  if (!item) return res.status(404).json({ error: 'Twibbon tidak ditemukan.' });
+
+  const file = twibbonFile(item.id);
+  if (!fs.existsSync(file)) {
+    return res.status(404).json({ error: 'File twibbon tidak ditemukan.' });
+  }
+
+  res.type('png');
+  res.sendFile(file);
+});
+
+app.post('/api/twibbons/:id/activate', (req, res) => {
+  const items = readTwibbonIndex();
+  const item = items.find(entry => entry.id === req.params.id);
+  const file = twibbonFile(req.params.id);
+
+  if (!item || !file || !fs.existsSync(file)) {
+    return res.status(404).json({ error: 'Twibbon tidak ditemukan.' });
+  }
+
+  writeActiveTwibbon(item.id);
+  res.json({ ok: true, activeId: item.id });
+});
+
+app.delete('/api/twibbons/:id', async (req, res) => {
+  const items = readTwibbonIndex();
+  const item = items.find(entry => entry.id === req.params.id);
+  const file = twibbonFile(req.params.id);
+
+  if (!item || !file) return res.status(404).json({ error: 'Twibbon tidak ditemukan.' });
+
+  try {
+    await fs.promises.unlink(file).catch(e => {
+      if (e.code !== 'ENOENT') throw e;
+    });
+
+    const remaining = items.filter(entry => entry.id !== item.id);
+    writeTwibbonIndex(remaining);
+
+    if (readActiveTwibbon() === item.id) {
+      writeActiveTwibbon(remaining.length ? remaining[0].id : null);
+    }
+
+    res.json({ ok: true, activeId: readActiveTwibbon() });
+  } catch (e) {
+    console.error('[twibbon-gallery-delete]', e.message);
+    res.status(500).json({ error: 'Twibbon gagal dihapus.' });
   }
 });
 
