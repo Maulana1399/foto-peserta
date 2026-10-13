@@ -186,24 +186,61 @@ async function googleDriveUpload(filename, buffer, mime) {
   const result = await drive.files.create({ requestBody: metadata, media: { mimeType: mime, body: require('stream').Readable.from(buffer) }, fields: 'id,name,webViewLink' });
   return { provider: 'Google Drive', filename: result.data.name, fileId: result.data.id, url: result.data.webViewLink || null };
 }
-app.post('/api/upload', upload.single('photo'), async (req, res) => {
+app.post('/api/upload', upload.fields([
+  { name: 'photo', maxCount: 1 },
+  { name: 'rawPhoto', maxCount: 1 }
+]), async (req, res) => {
   try {
+    console.log('[upload-debug]', {
+      fields: Object.keys(req.files || {}),
+      photoCount: req.files?.photo?.length || 0,
+      rawPhotoCount: req.files?.rawPhoto?.length || 0
+    });
     const { nama, kelompok, desa, daerah, provider } = req.body;
-    if (![nama, kelompok, desa].every(v => typeof v === 'string' && v.trim())) return res.status(400).json({ error: 'Nama, Kelompok, dan Desa wajib diisi.' });
-    if (!['Balikpapan', 'Samarinda'].includes(daerah)) return res.status(400).json({ error: 'Pilih daerah Balikpapan atau Samarinda.' });
-    if (!req.file) return res.status(400).json({ error: 'File foto tidak ditemukan.' });
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(req.file.mimetype)) return res.status(415).json({ error: 'Format foto harus JPEG, PNG, atau WebP.' });
-    if (!['nextcloud', 'gdrive'].includes(provider)) return res.status(400).json({ error: 'Pilih tujuan upload yang valid.' });
+    if (![nama, kelompok, desa].every(v => typeof v === 'string' && v.trim())) {
+      return res.status(400).json({ error: 'Nama, Kelompok, dan Desa wajib diisi.' });
+    }
+    if (!['Balikpapan', 'Samarinda'].includes(daerah)) {
+      return res.status(400).json({ error: 'Pilih daerah Balikpapan atau Samarinda.' });
+    }
+
+    const photo = req.files?.photo?.[0];
+    const rawPhoto = req.files?.rawPhoto?.[0];
+    if (!photo || !rawPhoto) {
+      return res.status(400).json({ error: 'Foto bertwibbon dan foto raw wajib dikirim bersamaan.' });
+    }
+    const allowed = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowed.includes(photo.mimetype) || !allowed.includes(rawPhoto.mimetype)) {
+      return res.status(415).json({ error: 'Format foto harus JPEG, PNG, atau WebP.' });
+    }
+    if (!['nextcloud', 'gdrive'].includes(provider)) {
+      return res.status(400).json({ error: 'Pilih tujuan upload yang valid.' });
+    }
+
     const filename = makeFilename({ nama, kelompok, desa });
-    const result = provider === 'nextcloud'
-      ? await nextcloudUpload(filename, req.file.buffer, req.file.mimetype, daerah)
-      : await googleDriveUpload(filename, req.file.buffer, req.file.mimetype);
-    res.json({ ok: true, ...result });
+    const rawFilename = filename.replace(/\.jpg$/i, '_raw.jpg');
+
+    // Simpan hasil bertwibbon dan raw ke tujuan cloud yang sama.
+    const saveFile = (name, file) => provider === 'nextcloud'
+      ? nextcloudUpload(name, file.buffer, file.mimetype, daerah)
+      : googleDriveUpload(name, file.buffer, file.mimetype);
+
+    const result = await saveFile(filename, photo);
+    const rawResult = await saveFile(rawFilename, rawPhoto);
+
+    res.json({
+      ok: true,
+      ...result,
+      rawFilename: rawResult.filename,
+      rawLocation: rawResult.location || null,
+      rawUrl: rawResult.url || null
+    });
   } catch (e) {
     console.error('[upload]', e.message);
     res.status(500).json({ error: e.message || 'Upload gagal.' });
   }
 });
+
 app.use((err, _req, res, _next) => {
   if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') return res.status(413).json({ error: err.field === 'twibbon' ? 'Ukuran twibbon maksimal 12 MB.' : 'Ukuran foto maksimal 15 MB.' });
   console.error('[server]', err.message);

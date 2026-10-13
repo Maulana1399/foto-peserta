@@ -5,7 +5,7 @@
     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   let stream = null, cameras = [], selectedDeviceId = '',
       facing = isMobileDevice ? 'environment' : 'user', mirrored = false;
-  let twibbonImage = null, twibbonObjectUrl = null, capturedBlob = null, capturedUrl = null, uploadCount = 0;
+  let twibbonImage = null, twibbonObjectUrl = null, capturedBlob = null, capturedRawBlob = null, capturedUrl = null, captureVersion = 0, uploadCount = 0;
   const names = ['nama', 'kelompok', 'desa'];
   const clean = value => String(value || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9._ -]/g, '').trim().replace(/[ ._-]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 80);
   const filename = () => `${clean($('nama').value) || 'Tanpa_Nama'}_${clean($('kelompok').value) || 'Tanpa_Kelompok'}_${clean($('desa').value) || 'Tanpa_Desa'}.jpg`;
@@ -145,32 +145,69 @@
       console.warn('Gagal memuat twibbon bersama:', e);
     }
   }
-  function capture() {
+  function canvasBlob(canvas) {
+    return new Promise((resolve, reject) => {
+      canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('Gagal memproses foto.')), 'image/jpeg', .92);
+    });
+  }
+
+  async function capture() {
     if (!stream || !video.videoWidth) return;
-    const out = document.createElement('canvas'); out.width = video.videoWidth; out.height = video.videoHeight;
-    const c = out.getContext('2d');
-    // Hasil foto memakai orientasi kamera asli; tombol cermin hanya mengubah tampilan live preview.
-    c.drawImage(video, 0, 0, out.width, out.height);
+    const version = ++captureVersion;
+
+    const rawCanvas = document.createElement('canvas');
+    rawCanvas.width = video.videoWidth;
+    rawCanvas.height = video.videoHeight;
+    rawCanvas.getContext('2d').drawImage(video, 0, 0, rawCanvas.width, rawCanvas.height);
+
+    const finalCanvas = document.createElement('canvas');
+    finalCanvas.width = rawCanvas.width;
+    finalCanvas.height = rawCanvas.height;
+    const c = finalCanvas.getContext('2d');
+    c.drawImage(rawCanvas, 0, 0);
+
     if (twibbonImage) {
-      c.save(); c.globalAlpha = Number($('twibbonOpacity').value) / 100;
+      c.save();
+      c.globalAlpha = Number($('twibbonOpacity').value) / 100;
       if ($('twibbonFit').value === 'contain') {
-        const s = Math.min(out.width / twibbonImage.width, out.height / twibbonImage.height), w = twibbonImage.width * s, h = twibbonImage.height * s;
-        c.drawImage(twibbonImage, (out.width - w) / 2, (out.height - h) / 2, w, h);
+        const s = Math.min(finalCanvas.width / twibbonImage.width, finalCanvas.height / twibbonImage.height);
+        const w = twibbonImage.width * s, h = twibbonImage.height * s;
+        c.drawImage(twibbonImage, (finalCanvas.width - w) / 2, (finalCanvas.height - h) / 2, w, h);
       } else {
-        const s = Math.max(out.width / twibbonImage.width, out.height / twibbonImage.height), w = twibbonImage.width * s, h = twibbonImage.height * s;
-        c.drawImage(twibbonImage, (out.width - w) / 2, (out.height - h) / 2, w, h);
+        const s = Math.max(finalCanvas.width / twibbonImage.width, finalCanvas.height / twibbonImage.height);
+        const w = twibbonImage.width * s, h = twibbonImage.height * s;
+        c.drawImage(twibbonImage, (finalCanvas.width - w) / 2, (finalCanvas.height - h) / 2, w, h);
       }
       c.restore();
     }
-    out.toBlob(blob => {
-      if (!blob) { setMessage('uploadMessage', 'Gagal memproses foto. Silakan coba lagi.', 'error'); return; }
-      capturedBlob = blob;
+
+    try {
+      const [rawBlob, finalBlob] = await Promise.all([
+        canvasBlob(rawCanvas),
+        canvasBlob(finalCanvas)
+      ]);
+      // Jika ada foto lebih baru, jangan timpa pratinjau terbaru.
+      if (version !== captureVersion) return;
+
+      capturedRawBlob = rawBlob;
+      capturedBlob = finalBlob;
       if (capturedUrl) URL.revokeObjectURL(capturedUrl);
-      capturedUrl = URL.createObjectURL(blob);
-      $('capturedPhoto').src = capturedUrl; $('capturedPhoto').classList.remove('hidden'); $('resultBox').querySelector('.empty-photo').classList.add('hidden');
-      $('photoState').textContent = 'Foto siap'; $('uploadButton').disabled = false; $('retake').disabled = false; updateFilename(); hideMessage('uploadMessage');
-    }, 'image/jpeg', .92);
+      capturedUrl = URL.createObjectURL(finalBlob);
+      $('capturedPhoto').src = capturedUrl;
+      $('capturedPhoto').classList.remove('hidden');
+      $('resultBox').querySelector('.empty-photo').classList.add('hidden');
+      $('photoState').textContent = 'Foto siap';
+      $('uploadButton').disabled = false;
+      $('retake').disabled = false;
+      updateFilename();
+      hideMessage('uploadMessage');
+    } catch (e) {
+      if (version === captureVersion) {
+        setMessage('uploadMessage', e.message || 'Gagal memproses foto. Silakan coba lagi.', 'error');
+      }
+    }
   }
+
   async function checkStatus() {
     try {
       const response = await fetch('/api/status'); const data = await response.json();
@@ -189,31 +226,80 @@
     } catch { $('cloudStatus').className = 'cloud-status bad'; $('cloudStatus').textContent = 'Tidak dapat memeriksa status server.'; }
   }
   async function uploadPhoto() {
-    if (!capturedBlob) return;
+    if (!capturedBlob || !capturedRawBlob) return;
     const form = $('participantForm');
     if (!form.reportValidity()) return;
+
+    const version = captureVersion;
+    const photoBlob = capturedBlob;
+    const rawBlob = capturedRawBlob;
+    const photoName = filename();
+    const rawName = photoName.replace(/\.jpg$/i, '_raw.jpg');
+    const participant = Object.fromEntries(
+      names.map(n => [n, $(n).value.trim()])
+    );
+    const daerah = $('daerah').value;
     const provider = $('provider').value;
-    $('uploadButton').disabled = true; $('uploadButton').textContent = 'Mengunggah…';
-    setMessage('uploadMessage', 'Mengunggah foto ke penyimpanan cloud…', 'info');
+
+    $('uploadButton').disabled = true;
+    $('uploadButton').textContent = 'Mengunggah…';
+    setMessage('uploadMessage', 'Mengunggah foto bertwibbon dan foto raw…', 'info');
+
     try {
       const fd = new FormData();
-      fd.append('photo', capturedBlob, filename());
-      names.forEach(n => fd.append(n, $(n).value.trim()));
-      fd.append('daerah', $('daerah').value);
+      fd.append('photo', photoBlob, photoName);
+      fd.append('rawPhoto', rawBlob, rawName);
+      names.forEach(n => fd.append(n, participant[n]));
+      fd.append('daerah', daerah);
       fd.append('provider', provider);
+
       const response = await fetch('/api/upload', { method: 'POST', body: fd });
       const data = await response.json();
       if (!response.ok || !data.ok) throw new Error(data.error || 'Upload gagal.');
-      uploadCount++; $('sessionCount').textContent = `${uploadCount} foto berhasil`;
-      const last = $('lastUpload'); last.innerHTML = '';
-      const strong = document.createElement('strong'); strong.textContent = '✓ Upload berhasil';
-      const detail = document.createElement('div'); detail.textContent = `${data.filename} · ${data.provider}${data.location ? ' · ' + data.location : ''}`;
+
+      uploadCount++;
+      $('sessionCount').textContent = `${uploadCount} foto berhasil`;
+      const last = $('lastUpload');
+      last.innerHTML = '';
+      const strong = document.createElement('strong');
+      strong.textContent = '✓ Upload berhasil';
+      const detail = document.createElement('div');
+      detail.textContent = `${data.filename} + ${data.rawFilename} · ${data.provider}${data.location ? ' · ' + data.location : ''}`;
       last.append(strong, detail);
-      setMessage('uploadMessage', `Berhasil upload ${data.filename} ke ${data.provider}.`, 'success');
-      form.reset(); updateFilename(); capturedBlob = null; $('capturedPhoto').classList.add('hidden'); $('resultBox').querySelector('.empty-photo').classList.remove('hidden'); $('photoState').textContent = 'Belum ada foto'; $('uploadButton').disabled = true; $('retake').disabled = true;
-    } catch (e) { setMessage('uploadMessage', e.message || 'Upload gagal. Periksa koneksi dan konfigurasi cloud.', 'error'); }
-    finally { $('uploadButton').textContent = '↑ Upload foto'; $('uploadButton').disabled = !capturedBlob; checkStatus(); }
+
+      // Hanya bersihkan form jika tidak ada foto/data baru sejak upload dimulai.
+      const sameParticipant = names.every(n => $(n).value.trim() === participant[n]) &&
+        $('daerah').value === daerah;
+      if (captureVersion === version && sameParticipant) {
+        capturedBlob = null;
+        capturedRawBlob = null;
+        if (capturedUrl) URL.revokeObjectURL(capturedUrl);
+        capturedUrl = null;
+        $('capturedPhoto').removeAttribute('src');
+        $('capturedPhoto').classList.add('hidden');
+        $('resultBox').querySelector('.empty-photo').classList.remove('hidden');
+        $('photoState').textContent = 'Belum ada foto';
+        $('retake').disabled = true;
+        form.reset();
+        updateFilename();
+      }
+
+      if (captureVersion === version && sameParticipant) {
+        setMessage('uploadMessage', `Berhasil upload ${data.filename} dan ${data.rawFilename}.`, 'success');
+      } else {
+        setMessage('uploadMessage', `Upload ${data.filename} dan ${data.rawFilename} berhasil. Foto/data terbaru tetap dipertahankan.`, 'success');
+      }
+    } catch (e) {
+      setMessage('uploadMessage', e.message || 'Upload gagal. Periksa koneksi dan konfigurasi cloud.', 'error');
+    } finally {
+      if (captureVersion === version) {
+        $('uploadButton').textContent = '↑ Upload foto';
+        $('uploadButton').disabled = !capturedBlob || !capturedRawBlob;
+      }
+      checkStatus();
+    }
   }
+
   names.forEach(n => $(n).addEventListener('input', updateFilename));
 
   // CUSTOM_AUTOCOMPLETE_V1
@@ -424,7 +510,7 @@
   $('twibbonOpacity').addEventListener('input', () => { $('opacityValue').textContent = `${$('twibbonOpacity').value}%`; drawOverlay(); });
   $('twibbonFit').addEventListener('change', drawOverlay);
   $('removeTwibbon').addEventListener('click', () => { if ($('removeTwibbon').disabled) return; if (twibbonObjectUrl && twibbonObjectUrl.startsWith('blob:')) URL.revokeObjectURL(twibbonObjectUrl); twibbonObjectUrl = null; twibbonImage = null; $('twibbonPreview').removeAttribute('src'); $('twibbonPreview').classList.add('hidden'); $('twibbonEmpty').classList.remove('hidden'); $('removeTwibbon').disabled = true; $('twibbonFile').value = ''; drawOverlay(); });
-  $('retake').addEventListener('click', () => { capturedBlob = null; $('capturedPhoto').classList.add('hidden'); $('resultBox').querySelector('.empty-photo').classList.remove('hidden'); $('photoState').textContent = 'Belum ada foto'; $('uploadButton').disabled = true; $('retake').disabled = true; hideMessage('uploadMessage'); });
+  $('retake').addEventListener('click', () => { captureVersion++; capturedBlob = null; capturedRawBlob = null; if (capturedUrl) URL.revokeObjectURL(capturedUrl); capturedUrl = null; $('capturedPhoto').removeAttribute('src'); $('capturedPhoto').classList.add('hidden'); $('resultBox').querySelector('.empty-photo').classList.remove('hidden'); $('photoState').textContent = 'Belum ada foto'; $('uploadButton').disabled = true; $('uploadButton').textContent = '↑ Upload foto'; $('retake').disabled = true; hideMessage('uploadMessage'); });
   $('uploadButton').addEventListener('click', uploadPhoto);
   $('provider').addEventListener('change', checkStatus);
   $('googleDisconnect').addEventListener('click', async () => { await fetch('/auth/google/disconnect', { method: 'POST' }); checkStatus(); });
