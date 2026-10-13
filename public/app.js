@@ -298,22 +298,27 @@
       }
 
       const blob = await response.blob();
+      if (!blob.size || !blob.type.includes('image')) {
+        throw new Error('Server tidak mengirim gambar twibbon yang valid.');
+      }
+
       const url = URL.createObjectURL(blob);
       const img = new Image();
 
-      img.onload = () => {
+      try {
+        await new Promise((resolve, reject) => {
+          img.onload = resolve;
+          img.onerror = () => reject(new Error('Browser gagal membaca gambar twibbon.'));
+          img.src = url;
+        });
+
         showTwibbonImage(img, url, true);
         status.className = 'cloud-status good';
         status.textContent = 'Twibbon aktif tersimpan di server dan digunakan semua perangkat.';
-      };
-
-      img.onerror = () => {
+      } catch (error) {
         URL.revokeObjectURL(url);
-        status.className = 'cloud-status bad';
-        status.textContent = 'Gambar twibbon aktif tidak dapat dibaca.';
-      };
-
-      img.src = url;
+        throw error;
+      }
     } catch (error) {
       status.className = 'cloud-status bad';
       status.textContent = error.message || 'Galeri gagal dimuat. Periksa koneksi server.';
@@ -700,6 +705,25 @@
 
   arrangePhotoPreview();
   window.addEventListener('resize', arrangePhotoPreview);
+
+  $('retake').addEventListener('click', () => {
+    captureVersion++;
+    capturedBlob = null;
+    capturedRawBlob = null;
+
+    if (capturedUrl) URL.revokeObjectURL(capturedUrl);
+    capturedUrl = null;
+
+    $('capturedPhoto').removeAttribute('src');
+    $('capturedPhoto').classList.add('hidden');
+    $('resultBox').querySelector('.empty-photo').classList.remove('hidden');
+    $('photoState').textContent = 'Belum ada foto';
+    $('retake').disabled = true;
+    $('uploadButton').disabled = true;
+    hideMessage('uploadMessage');
+  });
+
+  $('uploadButton').addEventListener('click', uploadPhoto);
 
   $('shutter').addEventListener('click', capture);
   $('switchCamera').addEventListener('click', async () => {
