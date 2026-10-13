@@ -146,3 +146,114 @@
 .twibbon-gallery-actions .gallery-delete{background:#fff5f3;color:var(--red);border-color:#ffd8d2}
 .gallery-empty{font-size:11px;line-height:1.5;color:var(--muted);padding:12px;border:1px dashed var(--line);border-radius:9px;margin:0}
 
+
+
+/* Compact layout refinement */
+.layout {
+  max-width: 1120px;
+  margin-top: 18px;
+  gap: 14px;
+}
+
+.panel {
+  padding: 18px;
+}
+
+.stage {
+  max-width: 440px;
+  margin-inline: auto;
+  aspect-ratio: 4 / 5;
+}
+
+.section-heading {
+  margin-bottom: 13px;
+}
+
+.section-heading h2 {
+  font-size: 17px;
+}
+
+.topbar {
+  padding-top: 13px;
+  padding-bottom: 13px;
+}
+
+.brandmark {
+  width: 38px;
+  height: 38px;
+}
+
+.form-panel input,
+.setting-card select,
+.camera-select-wrap select {
+  padding: 9px 10px;
+}
+
+.twibbon-preview img {
+  max-height: 120px;
+}
+
+@media (max-width: 850px) {
+  .layout {
+    margin-top: 12px;
+    gap: 12px;
+  }
+
+  .stage {
+    max-width: 100%;
+  }
+
+  .panel {
+    padding: 15px;
+  }
+}
+
+/* Compact layout refinement v2 */
+.layout {
+  max-width: 1040px;
+  gap: 12px;
+  margin-top: 14px;
+  padding-inline: 16px;
+}
+
+.panel {
+  padding: 15px;
+}
+
+.stage {
+  max-width: 380px;
+}
+
+.topbar {
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+.brandmark {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+}
+
+.section-heading h2 {
+  font-size: 16px;
+}
+
+.section-heading {
+  margin-bottom: 10px;
+}
+
+@media (max-width: 850px) {
+  .layout {
+    padding-inline: 12px;
+  }
+
+  .stage {
+    max-width: 100%;
+  }
+
+  .panel {
+    padding: 13px;
+  }
+}
+

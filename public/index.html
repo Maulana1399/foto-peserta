@@ -3,18 +3,20 @@
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#101827"><title>Foto Peserta</title>
-  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/style.css?v=camera-zoom-side-v1">
 </head>
 <body>
 <header class="topbar"><div class="brandmark">FP</div><div><h1>Foto Peserta</h1><p>Ambil foto · Pasang twibbon · Upload</p></div><span id="cameraBadge" class="badge">Kamera belum aktif</span></header>
 <main class="layout">
   <section class="panel camera-panel">
     <div class="section-heading"><div><p class="eyebrow">STUDIO FOTO</p><h2>Ambil foto</h2></div><button id="startCamera" class="button button-secondary">Aktifkan kamera</button></div>
-    <div id="stage" class="stage">
+    <div class="camera-workspace">
+        <div id="stage" class="stage">
       <video id="video" autoplay playsinline muted></video>
       <canvas id="overlayCanvas" aria-label="Pratinjau twibbon"></canvas>
       <div id="cameraPlaceholder" class="placeholder"><div class="placeholder-icon">◎</div><strong>Kamera siap digunakan</strong><span>Izinkan akses kamera saat diminta browser.</span></div>
       <div class="stage-tag">LIVE PREVIEW</div>
+    </div>
     </div>
     <div class="camera-controls">
       <div class="camera-select-wrap"><label for="cameraSelect">Perangkat kamera</label><select id="cameraSelect"><option value="">Pilih kamera</option></select></div>
@@ -71,5 +73,5 @@
   <section class="panel workflow-panel"><div class="section-heading"><div><p class="eyebrow">SESI FOTO</p><h2>Foto berikutnya</h2></div><span id="sessionCount" class="step">0 foto berhasil</span></div><p class="hint">Setelah upload berhasil, data identitas dibersihkan agar siap untuk peserta berikutnya. Twibbon dan kamera tetap dipertahankan.</p><div id="lastUpload" class="last-upload">Belum ada foto yang diunggah pada sesi ini.</div></section>
 </main>
 <footer>Foto Peserta · Akses kamera memerlukan HTTPS, kecuali saat mengakses localhost.</footer>
-<script src="/app.js?v=twibbon-gallery-v1" defer></script>
+<script src="/app.js?v=camera-zoom-v1" defer></script>
 </body></html>

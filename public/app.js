@@ -346,7 +346,6 @@
       sy = (sourceH - sh) / 2;
     }
 
-    // Pertahankan resolusi kamera pada area crop.
     const outputH = Math.round(sh);
     const outputW = Math.round(outputH * targetRatio);
 
@@ -354,8 +353,7 @@
     rawCanvas.width = outputW;
     rawCanvas.height = outputH;
     rawCanvas.getContext('2d').drawImage(
-      video, sx, sy, sw, sh,
-      0, 0, outputW, outputH
+      video, sx, sy, sw, sh, 0, 0, outputW, outputH
     );
 
     const finalCanvas = document.createElement('canvas');
