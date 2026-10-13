@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#101827"><title>Foto Peserta</title>
-  <link rel="stylesheet" href="/style.css?v=camera-zoom-side-v1">
+  <link rel="stylesheet" href="/style.css?v=mobile-upload-20261013?v=camera-zoom-side-v1">
 </head>
 <body>
 <header class="topbar"><div class="brandmark">FP</div><div><h1>Foto Peserta</h1><p>Ambil foto · Pasang twibbon · Upload</p></div><span id="cameraBadge" class="badge">Kamera belum aktif</span></header>
@@ -40,6 +40,7 @@
       <label for="kelompok">Kelompok <b>*</b></label><input id="kelompok" name="kelompok" list="kelompokOptions" placeholder="Cari atau ketik kelompok..." required maxlength="100" autocomplete="off"><datalist id="kelompokOptions"></datalist>
       <div class="filename-box"><span>Nama file otomatis</span><strong id="filenamePreview">Nama_Kelompok_Desa.jpg</strong><small>Nama, kelompok, dan desa digabung otomatis.</small></div>
     </form>
+    <div id="mobileUploadSlot" class="mobile-upload-slot"></div>
     <div id="photoPreviewPanel" class="photo-preview-panel">
       <div class="divider"></div>
       <div class="section-heading"><div><p class="eyebrow">HASIL FOTO</p><h2>Pratinjau</h2></div><span id="photoState" class="step">Belum ada foto</span></div>
@@ -73,5 +74,5 @@
   <section class="panel workflow-panel"><div class="section-heading"><div><p class="eyebrow">SESI FOTO</p><h2>Foto berikutnya</h2></div><span id="sessionCount" class="step">0 foto berhasil</span></div><p class="hint">Setelah upload berhasil, data identitas dibersihkan agar siap untuk peserta berikutnya. Twibbon dan kamera tetap dipertahankan.</p><div id="lastUpload" class="last-upload">Belum ada foto yang diunggah pada sesi ini.</div></section>
 </main>
 <footer>Foto Peserta · Akses kamera memerlukan HTTPS, kecuali saat mengakses localhost.</footer>
-<script src="/app.js?v=remove-zoom-fix-20261013" defer></script>
+<script src="/app.js?v=mobile-upload-20261013" defer></script>
 </body></html>

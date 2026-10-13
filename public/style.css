@@ -257,3 +257,20 @@
   }
 }
 
+
+
+/* Tombol upload di bawah identitas pada HP dan tablet */
+.mobile-upload-slot {
+  display: none;
+}
+@media (max-width: 850px) {
+  .mobile-upload-slot {
+    display: block;
+  }
+  .mobile-upload-slot .button {
+    width: 100%;
+    min-height: 46px;
+    margin-top: 12px;
+    font-size: 14px;
+  }
+}

@@ -702,10 +702,18 @@
   const cameraPanel = document.querySelector('.camera-panel');
   const formPanel = document.querySelector('.form-panel');
 
+  const mobileUploadSlot = $('mobileUploadSlot');
+  const uploadButton = $('uploadButton');
+  const uploadMessage = $('uploadMessage');
+  const uploadButtonRow = uploadButton.parentElement;
+
   function arrangePhotoPreview() {
     if (window.matchMedia('(max-width: 850px)').matches) {
       cameraPanel.appendChild(photoPreviewPanel);
+      mobileUploadSlot.append(uploadButton, uploadMessage);
     } else {
+      uploadButtonRow.appendChild(uploadButton);
+      photoPreviewPanel.appendChild(uploadMessage);
       formPanel.appendChild(photoPreviewPanel);
     }
   }
