@@ -302,9 +302,9 @@
 
 .header-event-logo {
   display: block;
-  width: auto;
-  max-width: min(100%, 280px);
-  height: 36px;
+  width: 280px;
+  max-width: 100%;
+  height: 65px;
   object-fit: contain;
   object-position: left center;
   margin: 0 0 6px;
@@ -377,10 +377,14 @@
     font-size: 16px;
   }
 
-  .header-event-logo {
-    max-width: 100%;
-    height: 27px;
-  }
+.header-event-logo {
+  width: 220px;
+  max-width: 100%;
+  height: 48px;
+  object-fit: contain;
+  object-position: left center;
+  margin-bottom: 4px;
+}
 
   .header-identity p {
     font-size: 11px;

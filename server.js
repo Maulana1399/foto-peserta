@@ -58,7 +58,7 @@ function getCloudStatus() {
 
 const LOGO_FILES = {
   kja: 'KJA LOGO.png',
-  'perfect-match': 'PERFECT MATCH X LINK IN.png',
+  'perfect-match': 'Match X LiNK-iN Landscape Logo.png',
   generus: 'Glossy Bear Emblem with Generus Balikpapan.png',
   ppg: 'Logo PPG Balikpapan 2.png',
 };
