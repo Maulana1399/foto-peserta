@@ -63,13 +63,15 @@ const LOGO_FILES = {
   ppg: 'Logo PPG Balikpapan 2.png',
 };
 
+const logoBaseUrl = process.env.LOGO_NEXTCLOUD_BASE_URL;
+const logoShareToken = process.env.LOGO_NEXTCLOUD_SHARE_TOKEN;
+
 app.get('/api/logos/:name', async (req, res) => {
   const filename = LOGO_FILES[req.params.name];
   if (!filename) return res.sendStatus(404);
 
   try {
-    const url = 'http://192.168.1.8:30027/s/cQjC5Kmx4jYEqBp/download?path=%2F&files='
-      + encodeURIComponent(filename);
+    const url = `${logoBaseUrl}/s/${logoShareToken}/download?path=%2F&files=${encodeURIComponent(filename)}`;
     const response = await fetch(url);
 
     if (!response.ok) {
