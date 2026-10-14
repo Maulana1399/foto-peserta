@@ -13,6 +13,20 @@
   function hideMessage(id) { $(id).classList.add('hidden'); }
   function updateFilename() { $('filenamePreview').textContent = filename(); }
   function setCameraError(text) { const el = $('cameraError'); if (!text) { el.classList.add('hidden'); el.textContent = ''; } else { el.textContent = text; el.classList.remove('hidden'); } }
+
+  function updateCameraTransform() {
+    const zoom = Math.max(1, Number($('zoomLevel').value) || 1);
+    const vertical = Math.max(-100, Math.min(100, Number($('verticalPosition').value) || 0));
+    const translateY = vertical * (zoom - 1) / 2;
+
+    video.style.transform =
+      `${mirrored ? 'scaleX(-1) ' : ''}translateY(${translateY}%) scale(${zoom})`;
+
+    $('zoomValue').textContent = `${zoom.toFixed(1)}×`;
+    $('verticalValue').textContent =
+      vertical === 0 ? 'Tengah' : vertical < 0 ? 'Naik' : 'Turun';
+  }
+
   function stopCamera() { if (stream) stream.getTracks().forEach(track => track.stop()); stream = null; video.srcObject = null; }
   async function refreshCameras() {
     try {
@@ -351,7 +365,18 @@
       sy = (sourceH - sh) / 2;
     }
 
-    const outputH = Math.round(sh);
+    // Zoom hanya mengubah crop foto bertwibbon, bukan frame foto asli.
+    const baseSx = sx, baseSy = sy, baseSw = sw, baseSh = sh;
+    const zoom = Math.max(1, Number($('zoomLevel').value) || 1);
+    const vertical = Math.max(-100, Math.min(100, Number($('verticalPosition').value) || 0));
+
+    sw = baseSw / zoom;
+    sh = baseSh / zoom;
+    sx = baseSx + (baseSw - sw) / 2;
+    sy = baseSy + (baseSh - sh) * (0.5 - vertical / 200);
+
+    // Resolusi output tetap mengikuti ukuran crop dasar 4:5.
+    const outputH = Math.round(baseSh);
     const outputW = Math.round(outputH * targetRatio);
 
     // Foto raw: seluruh frame kamera, tanpa crop dan tanpa twibbon.
@@ -771,7 +796,22 @@
     }
   });
   $('cameraSelect').addEventListener('change', e => { selectedDeviceId = e.target.value; if (selectedDeviceId) startCamera(selectedDeviceId, facing); });
-  $('mirrorCamera').addEventListener('click', () => { mirrored = !mirrored; video.style.transform = mirrored ? 'scaleX(-1)' : ''; $('mirrorCamera').setAttribute('aria-pressed', String(mirrored)); $('mirrorCamera').classList.toggle('button-primary', mirrored); });
+  $('mirrorCamera').addEventListener('click', () => {
+    mirrored = !mirrored;
+    updateCameraTransform();
+    $('mirrorCamera').setAttribute('aria-pressed', String(mirrored));
+    $('mirrorCamera').classList.toggle('button-primary', mirrored);
+  });
+
+  $('zoomLevel').addEventListener('input', updateCameraTransform);
+  $('verticalPosition').addEventListener('input', updateCameraTransform);
+  $('resetFraming').addEventListener('click', () => {
+    $('zoomLevel').value = '1';
+    $('verticalPosition').value = '0';
+    updateCameraTransform();
+  });
+
+  updateCameraTransform();
   $('twibbonFile').addEventListener('change', e => loadTwibbon(e.target.files[0]));
   $('twibbonOpacity').addEventListener('input', () => { $('opacityValue').textContent = `${$('twibbonOpacity').value}%`; drawOverlay(); });
   $('twibbonFit').addEventListener('change', drawOverlay);
