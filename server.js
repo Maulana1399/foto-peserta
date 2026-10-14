@@ -291,7 +291,7 @@ app.post('/auth/google/disconnect', (_req, res) => {
 function encodePath(p) {
   return String(p).split('/').filter(Boolean).map(encodeURIComponent).join('/');
 }
-async function nextcloudUpload(filename, buffer, mime, daerah, isRaw = false) {
+async function nextcloudUpload(filename, buffer, mime, daerah, jenisKelamin, isRaw = false) {
   const base = String(process.env.NEXTCLOUD_URL || '').replace(/\/+$/, '');
   const token = process.env.NEXTCLOUD_SHARE_TOKEN;
   const password = process.env.NEXTCLOUD_SHARE_PASSWORD || '';
@@ -308,7 +308,13 @@ async function nextcloudUpload(filename, buffer, mime, daerah, isRaw = false) {
 
   const baseDir = String(process.env.NEXTCLOUD_REMOTE_DIR || '')
     .replace(/^\/+|\/+$/g, '');
-  const remoteDir = [baseDir, daerah, ...(isRaw ? ['raw'] : [])].filter(Boolean).join('/');
+
+  const remoteDir = [
+    baseDir,
+    daerah,
+    jenisKelamin,
+    ...(isRaw ? ['raw'] : [])
+  ].filter(Boolean).join('/');
 
   for (const segment of remoteDir.split('/').filter(Boolean)) {
     current += '/' + encodeURIComponent(segment);
@@ -407,12 +413,15 @@ app.post('/api/upload', upload.fields([
       photoCount: req.files?.photo?.length || 0,
       rawPhotoCount: req.files?.rawPhoto?.length || 0
     });
-    const { nama, kelompok, desa, daerah, provider } = req.body;
+    const { nama, kelompok, desa, daerah, jenisKelamin, provider } = req.body;
     if (![nama, kelompok, desa].every(v => typeof v === 'string' && v.trim())) {
       return res.status(400).json({ error: 'Nama, Kelompok, dan Desa wajib diisi.' });
     }
     if (!['Balikpapan', 'Samarinda'].includes(daerah)) {
       return res.status(400).json({ error: 'Pilih daerah Balikpapan atau Samarinda.' });
+    }
+    if (!['Laki-laki', 'Perempuan'].includes(jenisKelamin)) {
+      return res.status(400).json({ error: 'Pilih jenis kelamin yang valid.' });
     }
 
     const photo = req.files?.photo?.[0];
@@ -433,7 +442,7 @@ app.post('/api/upload', upload.fields([
 
     // Simpan hasil bertwibbon dan raw ke tujuan cloud yang sama.
     const saveFile = (name, file, isRaw = false) => provider === 'nextcloud'
-      ? nextcloudUpload(name, file.buffer, file.mimetype, daerah, isRaw)
+      ? nextcloudUpload(name, file.buffer, file.mimetype, daerah, jenisKelamin, isRaw)
       : googleDriveUpload(name, file.buffer, file.mimetype, isRaw);
 
     const result = await saveFile(filename, photo);

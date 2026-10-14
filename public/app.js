@@ -459,6 +459,7 @@
       names.map(n => [n, $(n).value.trim()])
     );
     const daerah = $('daerah').value;
+    const jenisKelamin = $('jenisKelamin').value;
     const provider = $('provider').value;
 
     $('uploadButton').disabled = true;
@@ -471,6 +472,7 @@
       fd.append('rawPhoto', rawBlob, rawName);
       names.forEach(n => fd.append(n, participant[n]));
       fd.append('daerah', daerah);
+      fd.append('jenisKelamin', jenisKelamin);
       fd.append('provider', provider);
 
       const response = await fetch('/api/upload', { method: 'POST', body: fd });
@@ -489,7 +491,8 @@
 
       // Hanya bersihkan form jika tidak ada foto/data baru sejak upload dimulai.
       const sameParticipant = names.every(n => $(n).value.trim() === participant[n]) &&
-        $('daerah').value === daerah;
+        $('daerah').value === daerah &&
+        $('jenisKelamin').value === jenisKelamin;
       if (captureVersion === version && sameParticipant) {
         capturedBlob = null;
         capturedRawBlob = null;
@@ -501,6 +504,8 @@
         $('photoState').textContent = 'Belum ada foto';
         $('retake').disabled = true;
         form.reset();
+        $('daerah').value = daerah;
+        $('jenisKelamin').value = jenisKelamin;
         updateFilename();
       }
 
