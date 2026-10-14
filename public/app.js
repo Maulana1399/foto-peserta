@@ -460,7 +460,9 @@
     );
     const daerah = $('daerah').value;
     const jenisKelamin = $('jenisKelamin').value;
-    const provider = $('provider').value;
+    const providerLabel = $('provider').value;
+    const providerMap = { 'Nextcloud': 'nextcloud', 'Google Drive': 'gdrive' };
+    const provider = providerMap[providerLabel] || providerLabel;
 
     $('uploadButton').disabled = true;
     $('uploadButton').textContent = 'Mengunggah…';
@@ -540,7 +542,7 @@
     return choices.find(item => item.toLocaleLowerCase('id-ID') === normalized) || normalizeText(value);
   };
 
-  function setupAutocomplete(input, getChoices, label) {
+  function setupAutocomplete(input, getChoices, label, allowCustom = true) {
     const wrapper = document.createElement('div');
     wrapper.className = 'autocomplete';
     input.parentNode.insertBefore(wrapper, input);
@@ -607,7 +609,7 @@
       const exactMatch = choices.some(item =>
         item.toLocaleLowerCase('id-ID') === query
       );
-      if (normalizeText(input.value) && !exactMatch) {
+      if (allowCustom && normalizeText(input.value) && !exactMatch) {
         const custom = document.createElement('button');
         custom.type = 'button';
         custom.className = 'autocomplete-option autocomplete-custom';
@@ -639,6 +641,13 @@
     input.addEventListener('input', render);
     trigger.addEventListener('click', () => {
       if (menu.hidden) {
+        document.querySelectorAll('.autocomplete-menu').forEach(otherMenu => {
+          if (otherMenu !== menu) {
+            otherMenu.hidden = true;
+            const otherWrapper = otherMenu.closest('.autocomplete');
+            otherWrapper?.querySelector('input')?.setAttribute('aria-expanded', 'false');
+          }
+        });
         input.focus();
         render();
       } else {
@@ -686,6 +695,11 @@
 
   const desaInput = $('desa');
   const kelompokInput = $('kelompok');
+
+  setupAutocomplete($('daerah'), () => ['Balikpapan', 'Samarinda'], 'Daerah penyimpanan', false);
+  setupAutocomplete($('jenisKelamin'), () => ['Laki-laki', 'Perempuan'], 'Jenis kelamin', false);
+  setupAutocomplete($('provider'), () => ['Nextcloud', 'Google Drive'], 'Tujuan upload', false);
+
   const desaAutocomplete = setupAutocomplete(
     desaInput, () => Object.keys(masterGroups), 'Desa terdaftar'
   );

@@ -404,3 +404,51 @@
     padding: 6px 8px;
   }
 }
+
+/* Samakan tampilan dropdown identitas dan penyimpanan */
+#daerah,
+#jenisKelamin,
+#provider {
+  width: 100%;
+  min-height: 42px;
+  padding: 10px 12px;
+  border: 1px solid #dbe1ea;
+  border-radius: 9px;
+  background-color: #fff;
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  outline: none;
+  box-sizing: border-box;
+}
+
+#daerah:focus,
+#jenisKelamin:focus,
+#provider:focus {
+  border-color: #7395ed;
+  box-shadow: 0 0 0 3px #2459d31a;
+}
+
+
+/* Dropdown custom identitas dan tujuan upload */
+#daerah,
+#jenisKelamin,
+#provider {
+  width: 100%;
+  min-height: 42px;
+  padding: 11px 46px 11px 12px;
+  border: 1px solid #dbe1ea;
+  border-radius: 9px;
+  background: #fff;
+  color: var(--ink);
+  outline: none;
+  font: inherit;
+  min-width: 0;
+}
+#daerah:focus,
+#jenisKelamin:focus,
+#provider:focus {
+  border-color: #7395ed;
+  box-shadow: 0 0 0 3px #2459d31a;
+}

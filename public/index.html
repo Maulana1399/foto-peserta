@@ -41,16 +41,11 @@
     <div class="section-heading"><div><p class="eyebrow">IDENTITAS</p><h2>Data peserta</h2></div><span class="step">01 / 03</span></div>
     <form id="participantForm" autocomplete="off">
       <label for="daerah">Daerah penyimpanan <b>*</b></label>
-      <select id="daerah" name="daerah" required>
-        <option value="Balikpapan" selected>Balikpapan</option>
-        <option value="Samarinda">Samarinda</option>
-      </select>
+      <input id="daerah" name="daerah" value="Balikpapan"
+             placeholder="Pilih daerah..." required autocomplete="off">
       <label for="jenisKelamin">Jenis kelamin <b>*</b></label>
-      <select id="jenisKelamin" name="jenisKelamin" required>
-        <option value="">Pilih jenis kelamin</option>
-        <option value="Laki-laki">Laki-laki</option>
-        <option value="Perempuan">Perempuan</option>
-      </select>
+      <input id="jenisKelamin" name="jenisKelamin" value=""
+             placeholder="Pilih jenis kelamin..." required autocomplete="off">
       <label for="nama">Nama lengkap <b>*</b></label><input id="nama" name="nama" placeholder="Contoh: Maulana Achmad" required maxlength="100">
       <label for="desa">Desa <b>*</b></label><input id="desa" name="desa" list="desaOptions" placeholder="Cari atau ketik desa..." required maxlength="100" autocomplete="off"><datalist id="desaOptions"><option value="Batu Ampar"></option><option value="Ringroad"></option><option value="Sepinggan"></option><option value="Timur Raya"></option></datalist>
       <label for="kelompok">Kelompok <b>*</b></label><input id="kelompok" name="kelompok" list="kelompokOptions" placeholder="Cari atau ketik kelompok..." required maxlength="100" autocomplete="off"><datalist id="kelompokOptions"></datalist>
@@ -79,7 +74,9 @@
         <button id="removeTwibbon" class="text-button" disabled>Hapus twibbon aktif</button>
       </div>
       <div class="setting-card"><div class="setting-title"><div><strong>Tujuan upload</strong><p>Pilih tempat menyimpan foto hasil.</p></div><span class="setting-icon">☁</span></div>
-        <label for="provider">Penyimpanan cloud</label><select id="provider"><option value="nextcloud">Nextcloud</option><option value="gdrive">Google Drive</option></select>
+        <label for="provider">Penyimpanan cloud</label>
+        <input id="provider" name="provider" value="Nextcloud"
+               placeholder="Pilih penyimpanan cloud..." required autocomplete="off">
         <div id="cloudStatus" class="cloud-status">Memeriksa konfigurasi server…</div>
         <a id="googleConnect" class="button button-secondary full-width hidden" href="/auth/google">Hubungkan Google Drive</a>
         <button id="googleDisconnect" class="text-button hidden" type="button">Putuskan Google Drive</button>
